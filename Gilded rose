@@ -1,0 +1,136 @@
+# gilded_rose.py
+class Item:
+    def __init__(self, name, sell_in, quality):
+        self.name = name
+        self.sell_in = sell_in
+        self.quality = quality
+    
+    def __repr__(self):
+        return f"{self.name}, {self.sell_in}, {self.quality}"
+
+class BaseItem:
+    def __init__(self, item):
+        self.item = item
+    
+    def update_quality(self):
+        if self.item.quality > 0:
+            self.item.quality -= 1
+        self.item.sell_in -= 1
+        if self.item.sell_in < 0 and self.item.quality > 0:
+            self.item.quality -= 1
+
+class AgedBrie(BaseItem):
+    def update_quality(self):
+        if self.item.quality < 50:
+            self.item.quality += 1
+        self.item.sell_in -= 1
+        if self.item.sell_in < 0 and self.item.quality < 50:
+            self.item.quality += 1
+
+class BackstagePass(BaseItem):
+    def update_quality(self):
+        if self.item.quality < 50:
+            self.item.quality += 1
+            if self.item.sell_in < 11 and self.item.quality < 50:
+                self.item.quality += 1
+            if self.item.sell_in < 6 and self.item.quality < 50:
+                self.item.quality += 1
+        self.item.sell_in -= 1
+        if self.item.sell_in < 0:
+            self.item.quality = 0
+
+class Sulfuras(BaseItem):
+    def update_quality(self):
+        pass  # Sulfuras doesn't change
+
+class GildedRose:
+    ITEM_TYPES = {
+        "Aged Brie": AgedBrie,
+        "Backstage passes to a TAFKAL80ETC concert": BackstagePass,
+        "Sulfuras, Hand of Ragnaros": Sulfuras
+    }
+    
+    def __init__(self, items):
+        self.items = [self.ITEM_TYPES.get(item.name, BaseItem)(item) for item in items]
+    
+    def update_quality(self):
+        for item in self.items:
+            item.update_quality()
+
+# test_gilded_rose.py
+import unittest
+from gilded_rose import Item, GildedRose
+
+class GildedRoseTest(unittest.TestCase):
+    def test_normal_item_decreases_quality_and_sellin(self):
+        items = [Item("foo", 10, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 19)
+        self.assertEqual(items[0].sell_in, 9)
+
+    def test_normal_item_past_sellin_decreases_quality_twice(self):
+        items = [Item("foo", 0, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 18)
+        self.assertEqual(items[0].sell_in, -1)
+
+    def test_quality_never_negative(self):
+        items = [Item("foo", 10, 0)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 0)
+
+    def test_aged_brie_increases_quality(self):
+        items = [Item("Aged Brie", 10, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 21)
+        self.assertEqual(items[0].sell_in, 9)
+
+    def test_aged_brie_past_sellin_increases_quality_twice(self):
+        items = [Item("Aged Brie", 0, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 22)
+
+    def test_quality_never_above_50(self):
+        items = [Item("Aged Brie", 10, 50)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 50)
+
+    def test_sulfuras_never_changes(self):
+        items = [Item("Sulfuras, Hand of Ragnaros", 10, 80)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 80)
+        self.assertEqual(items[0].sell_in, 10)
+
+    def test_backstage_pass_increases_quality(self):
+        items = [Item("Backstage passes to a TAFKAL80ETC concert", 15, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 21)
+
+    def test_backstage_pass_10_days_or_less(self):
+        items = [Item("Backstage passes to a TAFKAL80ETC concert", 10, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 22)
+
+    def test_backstage_pass_5_days_or_less(self):
+        items = [Item("Backstage passes to a TAFKAL80ETC concert", 5, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 23)
+
+    def test_backstage_pass_after_concert(self):
+        items = [Item("Backstage passes to a TAFKAL80ETC concert", 0, 20)]
+        gilded_rose = GildedRose(items)
+        gilded_rose.update_quality()
+        self.assertEqual(items[0].quality, 0)
+
+if __name__ == '__main__':
+    unittest.main()
